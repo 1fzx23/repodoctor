@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RepoDoctor — Git 仓库健康诊断工具</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --bg-soft: #11151f;
+    --bg-card: #151b27;
+    --border: #232b3a;
+    --text: #e6edf3;
+    --text-dim: #9aa7b8;
+    --text-faint: #66748a;
+    --accent: #5eead4;
+    --accent-2: #7dd3fc;
+    --green: #4ade80;
+    --yellow: #facc15;
+    --red: #f472b6;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(900px 400px at 80% -10%, rgba(94,234,212,.08), transparent 60%), var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+  header { padding: 64px 0 24px; text-align: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--accent); border: 1px solid var(--border);
+    background: var(--bg-soft); padding: 6px 14px; border-radius: 999px;
+    font-family: var(--mono); margin-bottom: 18px;
+  }
+  h1 { font-size: clamp(36px, 7vw, 56px); margin: 0 0 12px; font-weight: 800; letter-spacing: -1px; }
+  .subtitle { color: var(--text-dim); font-size: 18px; max-width: 560px; margin: 0 auto 28px; }
+  .btns { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    font-size: 14px; font-weight: 600; padding: 10px 18px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg-card); color: var(--text);
+    transition: .15s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+  .btn.primary { background: linear-gradient(135deg, rgba(94,234,212,.18), rgba(125,211,252,.18)); border-color: rgba(94,234,212,.4); }
+  .btn.primary:hover { color: #fff; }
+
+  section { padding: 32px 0; }
+  h2 { font-size: 24px; margin: 0 0 16px; }
+  h3 { font-size: 18px; margin: 28px 0 10px; color: var(--accent-2); }
+  p { color: var(--text-dim); }
+  ul { color: var(--text-dim); padding-left: 20px; }
+  li { margin: 6px 0; }
+  code, pre { font-family: var(--mono); }
+  code {
+    background: var(--bg-soft); border: 1px solid var(--border);
+    padding: 2px 7px; border-radius: 6px; color: var(--accent-2); font-size: 14px;
+  }
+  pre {
+    background: var(--bg-soft); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; overflow: auto;
+    color: var(--text-dim); font-size: 14px; line-height: 1.6;
+  }
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; margin: 16px 0;
+  }
+  .rule { display: flex; gap: 12px; align-items: flex-start; margin: 10px 0; }
+  .rule .pill { flex: none; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-family: var(--mono); }
+  .pill.warning { color: var(--yellow); background: rgba(250,204,21,.12); }
+  .pill.error { color: var(--red); background: rgba(244,114,182,.12); }
+  .pill.info { color: var(--green); background: rgba(74,222,128,.12); }
+  .rule span:last-child { color: var(--text-dim); font-size: 15px; }
+
+  footer { border-top: 1px solid var(--border); padding: 30px 0 50px; text-align: center; color: var(--text-faint); font-size: 13px; }
+
+  @media (max-width: 640px) {
+    .btns { flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="badge">🩺 L6 · 大师级 · 零第三方依赖</div>
+    <h1>RepoDoctor</h1>
+    <p class="subtitle">Git 仓库健康诊断工具。扫描历史大文件、旧分支、潜在敏感信息、未跟踪文件与未提交改动，生成可读的诊断报告。</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/1fzx23/repodoctor" target="_blank" rel="noopener">查看源码 ↗</a>
+      <a class="btn" href="#install">安装使用</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section>
+    <h2>功能特性</h2>
+    <ul>
+      <li><b>综合扫描</b>：一键运行全部诊断规则，彩色终端摘要。</li>
+      <li><b>大文件检测</b>：基于 git blob 大小，找出历史中的“肥胖”对象。</li>
+      <li><b>旧分支清理</b>：列出或删除长期未更新、且已合并的分支。</li>
+      <li><b>敏感信息扫描</b>：基于正则启发式，检查工作区文件中的疑似密钥、token、私钥等。</li>
+      <li><b>工作区检查</b>：提醒未跟踪文件、未提交改动、本地分支落后于远程。</li>
+      <li><b>多种输出</b>：终端彩色报告、JSON、Markdown，方便集成到 CI。</li>
+      <li><b>零第三方依赖</b>：仅使用 Python 标准库 + 系统 <code>git</code>。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>诊断规则</h2>
+    <div class="card">
+      <div class="rule"><span class="pill warning">warning</span><span><b>large-blobs</b>：历史 blob 超过阈值，可能导致 clone 变慢。</span></div>
+      <div class="rule"><span class="pill warning">warning</span><span><b>old-branches</b>：分支超过阈值天数未更新。</span></div>
+      <div class="rule"><span class="pill error">error</span><span><b>secrets</b>：工作区文件疑似包含敏感信息。</span></div>
+      <div class="rule"><span class="pill info">info</span><span><b>untracked-files</b>：存在未跟踪文件。</span></div>
+      <div class="rule"><span class="pill warning">warning</span><span><b>working-tree</b>：工作区有未提交改动。</span></div>
+      <div class="rule"><span class="pill warning">warning</span><span><b>remote-sync</b>：本地分支落后于远程。</span></div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>安装与使用</h2>
+    <pre><code>git clone https://github.com/1fzx23/repodoctor.git
+cd repodoctor
+pip install -e .</code></pre>
+
+    <h3>常用命令</h3>
+    <pre><code># 综合扫描当前仓库
+repodoctor scan
+
+# 扫描指定仓库
+repodoctor -C /path/to/repo scan
+
+# 查找大于 2MB 的历史大文件
+repodoctor large-blobs -t 2
+
+# 查找 60 天未更新的分支
+repodoctor old-branches -d 60
+
+# 扫描潜在敏感信息
+repodoctor secrets
+
+# 生成 Markdown 报告
+repodoctor report -f md -o health.md
+
+# 预览/清理旧分支
+repodoctor clean
+repodoctor clean -d 90 --default-branch main --yes</code></pre>
+  </section>
+
+  <section>
+    <h2>集成 CI</h2>
+    <p>退出码 2 表示发现 warning 或 error，可轻松接入 GitHub Actions、GitLab CI 等流水线：</p>
+    <pre><code>repodoctor scan || echo "仓库健康检查未通过"</code></pre>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    由 <a href="https://github.com/1fzx23" target="_blank" rel="noopener">1fzx23</a> 开发 ·
+    <a href="https://github.com/1fzx23/repodoctor/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+  </div>
+</footer>
+
+</body>
+</html>
